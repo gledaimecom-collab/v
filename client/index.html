@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BitPlay - Stream Torrents Inside the Browser</title>
+    <meta
+      name="description"
+      content="BitPlay is a web-based torrent streaming application that allows you to stream torrents directly in your browser."
+    />
+    <link rel="icon" href="assets/favicon.png" type="image/png" />
+    <link rel="stylesheet" href="assets/video-js.min.css" />
+    <link rel="stylesheet" href="assets/butterup.min.css" />
+    <link rel="stylesheet" href="assets/output.css" />
+    <script>
+      // set theme mode
+      if (localStorage.getItem("theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.add("light");
+      }
+      // Read 'torrent' query parameter and set default value for magnet input
+      document.addEventListener("DOMContentLoaded", function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const torrent = urlParams.get("torrent");
+        if (torrent) {
+          const decodedTorrent = decodeURIComponent(torrent);
+          const magnetInput = document.getElementById("magnet");
+          if (magnetInput) {
+            magnetInput.value = decodedTorrent;
+          }
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <main
+      class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col items-center"
+    >
+      <div class="flex justify-between w-full gap-4 mb-8 md:mb-15">
+        <div class="flex items-center gap-3">
+          <img src="assets/bitplay_logo.png" alt="logo" class="h-12 w-auto" />
+          <span class="text-[24px] font-semibold">bitplay</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <button
+            class="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 size-10"
+            type="button"
+            id="toggle_theme"
+          ></button>
+          <button
+            class="inline-flex h-10 px-3 items-center cursor-pointer justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50"
+            type="button"
+            id="settings-btn"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-settings2 w-4 h-4"
+            >
+              <path d="M20 7h-9"></path>
+              <path d="M14 17H5"></path>
+              <circle cx="17" cy="17" r="3"></circle>
+              <circle cx="7" cy="7" r="3"></circle>
+            </svg>
+            Settings
+          </button>
+        </div>
+      </div>
+      <h1
+        class="mb-8 text-3xl leading-[1.2] md:text-5xl max-w-xl text-center font-semibold bg-gradient-to-r from-primary to-[#00CCFF] text-transparent bg-clip-text"
+      >
+        Stream torrents with ease
+      </h1>
+      <div id="search-wrapper" class="hidden w-full">
+        <form id="search-form" class="w-full flex items-center gap-3">
+          <input
+            class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-12 overflow-ellipsis overflow-hidden"
+            placeholder="Search..."
+            id="search"
+            name="search"
+            type="search"
+          />
+          <button class="btn" type="submit">Search</button>
+        </form>
+        <div
+          id="search-result"
+          class="mt-4 border rounded-lg overflow-auto max-h-[500px] bg-accent/50 hidden"
+        >
+          <table class="w-full caption-bottom text-sm">
+            <thead>
+              <tr class="bg-muted text-muted-foreground border-b">
+                <th class="p-3 text-left">Name</th>
+                <th class="p-3 text-left">Indexer</th>
+                <th class="p-3 text-left">Size</th>
+                <th class="p-3 text-left">Seeders</th>
+                <th class="p-3 text-left w-[10px]"></th>
+              </tr>
+            </thead>
+            <tbody
+              id="search-result-body"
+              class="divide-y [&_td]:px-3 [&_td]:py-2 [&_td]:whitespace-nowrap [&_td]:max-w-[200px] [&_td]:overflow-hidden [&_td]:text-ellipsis"
+            >
+              <tr>
+                <td colspan="5" class="py-10 px-6 text-center">
+                  No results found
+                </td>
+              </tr>
+            </tbody>
+            <tfoot class="hidden">
+              <tr>
+                <td colspan="5" class="py-10 px-6 text-center">
+                  No results found
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div id="search-pagination" class="hidden"></div>
+        <div
+          class="w-full my-4 text-center text-sm font-semibold text-accent-foreground"
+        >
+          OR
+        </div>
+      </div>
+      <form id="torrent-form" class="w-full flex items-center gap-3">
+        <div class="relative w-full">
+          <input
+            class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-12 pr-12 overflow-ellipsis overflow-hidden"
+            placeholder="Magnet link"
+            id="magnet"
+            name="magnet"
+          />
+          <button
+            id="copy_magnet"
+            class="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg:not([class*='size-'])]:size-4 shrink-0 [&amp;_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 size-10 absolute right-0 top-0 h-full w-12"
+            type="button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-clipboard-paste size-5"
+            >
+              <path
+                d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"
+              ></path>
+              <path
+                d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10"
+              ></path>
+              <path d="m17 10 4 4-4 4"></path>
+            </svg>
+          </button>
+        </div>
+        <button class="btn" type="submit">Play Now</button>
+      </form>
+      <div
+        id="demo_torrent"
+        class="w-full rounded-lg p-3 text-center flex items-center gap-2 justify-center text-sm font-semibold text-accent-foreground border-2 mt-4 border-primary bg-secondary/50 cursor-pointer hover:bg-transparent transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="lucide lucide-video w-6 h-6 inline-block"
+        >
+          <path
+            d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"
+          ></path>
+          <rect x="2" y="6" width="14" height="12" rx="2"></rect>
+        </svg>
+        Try Demo with Sintel (CC Movie)
+      </div>
+      <div
+        id="torrent_file_wrapper"
+        class="w-full relative rounded-lg p-3 py-10 text-center flex flex-col items-center gap-4 justify-center text-sm font-semibold text-accent-foreground mt-7 border-2 border-foreground/30 border-dashed bg-secondary/50 cursor-pointer hover:bg-transparent transition-all"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="lucide lucide-upload size-12 text-primary"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" x2="12" y1="3" y2="15"></line>
+        </svg>
+        <span class="text-sm text-accent-foreground font-bold"
+          >Drag and drop your torrent file here, or
+          <span class="text-primary">Browse</span>
+        </span>
+        <input
+          type="file"
+          class="opacity-0 size-full z-[1] absolute cursor-pointer"
+          accept=".torrent"
+          id="torrent_file"
+        />
+      </div>
+      <video id="video-player" class="video-js mt-10 w-full"></video>
+      <div id="stream-url-container" class="hidden w-full mt-4 p-4 bg-secondary/50 rounded-lg border">
+        <div class="flex items-center gap-2 mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-link w-5 h-5 text-primary">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+          <span class="text-sm font-semibold text-muted-foreground">Streaming URL:</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="stream-url" type="text" readonly class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm h-10 text-primary font-mono text-sm overflow-ellipsis overflow-hidden" />
+          <button id="copy-stream-url" class="inline-flex items-center cursor-pointer justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 h-10 px-4 border bg-background" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard w-4 h-4">
+              <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+              <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+            </svg>
+            Copy
+          </button>
+        </div>
+      </div>
+    </main>
+    <div id="settings-model" class="fixed inset-0 z-[999] flex flex-col hidden">
+      <!-- model overlay -->
+      <div id="close-settings" class="absolute inset-0 bg-black/70"></div>
+      <!-- model content -->
+      <div
+        class="p-6 bg-background rounded-xl shadow-lg w-full max-w-lg m-auto border z-[2]"
+      >
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-xl font-semibold">Settings</h1>
+          <button id="close-settings" type="button">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-x w-5 h-5"
+            >
+              <path d="M18 6 6 18"></path>
+              <path d="m6 6 12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="flex gap-2 mb-7">
+          <button
+            class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border bg-primary text-primary-foreground"
+            data-index="0"
+            type="button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-globe w-4 h-4"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+              <path d="M2 12h20"></path>
+            </svg>
+            <span>Proxy</span>
+          </button>
+          <button
+            class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-colors bg-muted border"
+            data-index="1"
+            type="button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-search w-4 h-4"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <span>Prowlarr</span>
+          </button>
+          <button
+            class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg transition-colors bg-muted border"
+            data-index="2"
+            type="button"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-server w-4 h-4"
+            >
+              <rect width="20" height="8" x="2" y="2" rx="2" ry="2"></rect>
+              <rect width="20" height="8" x="2" y="14" rx="2" ry="2"></rect>
+              <line x1="6" x2="6.01" y1="6" y2="6"></line>
+              <line x1="6" x2="6.01" y1="18" y2="18"></line>
+            </svg>
+            <span>Jackett</span>
+          </button>
+        </div>
+        <form
+          id="proxy-settings-form"
+          data-tab="0"
+          class="tab flex flex-col gap-6"
+        >
+          <label
+            id="switchInput"
+            for="enableProxy"
+            class="flex items-center cursor-pointer"
+          >
+            <input id="enableProxy" type="checkbox" class="sr-only" />
+            <div
+              class="w-11 switch-wrapper h-6 border bg-accent rounded-full shadow-inner relative transition"
+            >
+              <div
+                class="dot absolute size-5 bg-white rounded-full shadow left-[1px] top-[1px] transition"
+              ></div>
+            </div>
+            <span class="ml-3 text-muted-foreground"> Enable Proxy </span>
+          </label>
+          <div class="flex flex-col gap-2">
+            <label
+              for="proxy"
+              class="text-muted-foreground text-sm font-semibold"
+              >Enter a SOCKS5 Proxy URL
+            </label>
+            <input
+              type="text"
+              id="proxyUrl"
+              placeholder="socks5://username:password@host:port"
+              class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-10 pr-12 overflow-ellipsis overflow-hidden"
+            />
+          </div>
+          <div id="proxy-result" class="hidden items-center gap-2">
+            <span class="text-muted-foreground">IP Address:</span
+            ><span class="output-ip text-primary"></span>
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="test-proxy"
+              class="flex items-center justify-center gap-2 px-4 py-2 flex-1 rounded-lg transition-colors bg-muted border font-medium text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-test-tube2 w-4 h-4"
+              >
+                <path
+                  d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01v0a2.83 2.83 0 0 1 0-4L17 3"
+                ></path>
+                <path d="m16 2 6 6"></path>
+                <path d="M12 16H4"></path>
+              </svg>
+              <span>Test Proxy</span>
+            </button>
+            <button type="submit" class="btn flex-1 !h-11">
+              Save Settings
+            </button>
+          </div>
+        </form>
+        <form
+          id="prowlarr-settings-form"
+          data-tab="1"
+          class="tab flex flex-col gap-6 hidden"
+        >
+          <label
+            id="switchInput"
+            for="enableProwlarr"
+            class="flex items-center cursor-pointer"
+          >
+            <input id="enableProwlarr" type="checkbox" class="sr-only" />
+            <div
+              class="w-11 switch-wrapper h-6 border bg-accent rounded-full shadow-inner relative transition"
+            >
+              <div
+                class="dot absolute size-5 bg-white rounded-full shadow left-[1px] top-[1px] transition"
+              ></div>
+            </div>
+            <span class="ml-3 text-muted-foreground"> Enable Prowlarr </span>
+          </label>
+          <div class="flex flex-col gap-2">
+            <label
+              for="prowlarrHost"
+              class="text-muted-foreground text-sm font-semibold"
+              >Prowlarr Host</label
+            >
+            <input
+              type="text"
+              id="prowlarrHost"
+              placeholder="http://localhost:9117"
+              class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-10 pr-12 overflow-ellipsis overflow-hidden"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label
+              for="prowlarrApiKey"
+              class="text-muted-foreground text-sm font-semibold"
+              >API Key</label
+            >
+            <input
+              type="text"
+              id="prowlarrApiKey"
+              placeholder="Your Prowlarr API key"
+              class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-10 pr-12 overflow-ellipsis overflow-hidden"
+            />
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="test-prowlarr"
+              class="flex items-center justify-center gap-2 px-4 py-2 flex-1 rounded-lg transition-colors bg-muted border font-medium text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-test-tube2 w-4 h-4"
+              >
+                <path
+                  d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01v0a2.83 2.83 0 0 1 0-4L17 3"
+                ></path>
+                <path d="m16 2 6 6"></path>
+                <path d="M12 16H4"></path>
+              </svg>
+              <span>Test Connection</span>
+            </button>
+            <button type="submit" class="btn flex-1 !h-11">
+              Save Settings
+            </button>
+          </div>
+        </form>
+        <form
+          id="jackett-settings-form"
+          data-tab="2"
+          class="tab flex flex-col gap-6 hidden"
+        >
+          <label
+            id="switchInput"
+            for="enableJackett"
+            class="flex items-center cursor-pointer"
+          >
+            <input id="enableJackett" type="checkbox" class="sr-only" />
+            <div
+              class="w-11 switch-wrapper h-6 border bg-accent rounded-full shadow-inner relative transition"
+            >
+              <div
+                class="dot absolute size-5 bg-white rounded-full shadow left-[1px] top-[1px] transition"
+              ></div>
+            </div>
+            <span class="ml-3 text-muted-foreground"> Enable Jackett </span>
+          </label>
+          <div class="flex flex-col gap-2">
+            <label
+              for="jackettHost"
+              class="text-muted-foreground text-sm font-semibold"
+              >Jackett Host</label
+            >
+            <input
+              type="text"
+              id="jackettHost"
+              placeholder="http://localhost:9117"
+              class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-10 pr-12 overflow-ellipsis overflow-hidden"
+            />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label
+              for="jackettApiKey"
+              class="text-muted-foreground text-sm font-semibold"
+              >API Key</label
+            >
+            <input
+              type="text"
+              id="jackettApiKey"
+              placeholder="Your Jackett API key"
+              class="file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive h-10 pr-12 overflow-ellipsis overflow-hidden"
+            />
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              id="test-jackett"
+              class="flex items-center justify-center gap-2 px-4 py-2 flex-1 rounded-lg transition-colors bg-muted border font-medium text-sm"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-test-tube2 w-4 h-4"
+              >
+                <path
+                  d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01v0a2.83 2.83 0 0 1 0-4L17 3"
+                ></path>
+                <path d="m16 2 6 6"></path>
+                <path d="M12 16H4"></path>
+              </svg>
+              <span>Test Connection</span>
+            </button>
+            <button type="submit" class="btn flex-1 !h-11">
+              Save Settings
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="assets/video.min.js"></script>
+    <script src="assets/videojs.hotkeys.min.js"></script>
+    <script src="assets/butterup.min.js"></script>
+    <script>
+      // Function to show streaming URL
+      function showStreamUrl(sessionId, fileIndex, serverUrl) {
+        const container = document.getElementById('stream-url-container');
+        const input = document.getElementById('stream-url');
+        if (container && input) {
+          const streamUrl = `${serverUrl || window.location.origin}/api/v1/torrent/${sessionId}/stream/${fileIndex}`;
+          input.value = streamUrl;
+          container.classList.remove('hidden');
+        }
+      }
+      // Extract session ID and file index from a stream URL
+      function extractStreamInfo(src) {
+        if (!src) return null;
+        const match = src.match(/\/api\/v1\/torrent\/([^/]+)\/stream\/(\d+)/);
+        if (match) return { sessionId: match[1], fileIndex: parseInt(match[2], 10) };
+        return null;
+      }
+      // Poll the video element's src to detect when a stream URL is set
+      function checkVideoSrc() {
+        const video = document.getElementById('video-player');
+        if (!video) return;
+        const src = video.src || (video.querySelector('source') ? video.querySelector('source').src : '');
+        if (src) {
+          const info = extractStreamInfo(src);
+          if (info) { showStreamUrl(info.sessionId, info.fileIndex); return true; }
+        }
+        return false;
+      }
+      // Intercept fetch calls to catch addTorrent response
+      const originalFetch = window.fetch;
+      window.fetch = function() {
+        const url = arguments[0];
+        const urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+        return originalFetch.apply(this, arguments).then(function(response) {
+          if (urlStr.includes('/api/v1/torrent/add')) {
+            const cloned = response.clone();
+            cloned.json().then(function(data) {
+              if (data.sessionId || data.session_id) {
+                const sid = data.sessionId || data.session_id;
+                const fidx = data.fileIndex || data.file_index || 0;
+                showStreamUrl(sid, fidx);
+                // Also start polling for video src as backup
+                const pollInterval = setInterval(function() {
+                  if (checkVideoSrc()) clearInterval(pollInterval);
+                }, 500);
+                setTimeout(function() { clearInterval(pollInterval); }, 30000);
+              }
+            }).catch(function() {});
+          }
+          return response;
+        });
+      };
+      // Also poll video src as a fallback (video.js may set src after a delay)
+      document.addEventListener('DOMContentLoaded', function() {
+        const pollInterval = setInterval(function() {
+          if (checkVideoSrc()) clearInterval(pollInterval);
+        }, 500);
+        setTimeout(function() { clearInterval(pollInterval); }, 30000);
+      });
+      // Copy stream URL button
+      document.addEventListener('DOMContentLoaded', function() {
+        const copyBtn = document.getElementById('copy-stream-url');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', function() {
+            const input = document.getElementById('stream-url');
+            if (input) {
+              input.select();
+              document.execCommand('copy');
+              copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check w-4 h-4"><path d="M20 6 9 17l-5-5"></path></svg> Copied!';
+              setTimeout(() => {
+                copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard w-4 h-4"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg> Copy';
+              }, 2000);
+            }
+          });
+        }
+      });
+    </script>
+    <script type="module" src="assets/index.js"></script>
+  </body>
+</html>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BitPlay - Magnets</title>
+    <link rel="icon" href="assets/favicon.png" type="image/png" />
+    <style>
+      :root {
+        --bg: #0f1117;
+        --bg-card: #1a1d27;
+        --bg-hover: #222636;
+        --border: #2a2e3a;
+        --text: #e4e7ee;
+        --text-muted: #8b90a0;
+        --primary: #00ccff;
+        --primary-hover: #00b8e6;
+        --danger: #ff4757;
+        --success: #2ed573;
+        --radius: 12px;
+      }
+      .light {
+        --bg: #f7f8fa;
+        --bg-card: #ffffff;
+        --bg-hover: #f0f2f6;
+        --border: #e0e3ea;
+        --text: #1a1d27;
+        --text-muted: #6b7280;
+        --primary: #0099cc;
+        --primary-hover: #0080b3;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        transition: background 0.2s, color 0.2s;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 32px;
+      }
+      .logo-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: var(--text);
+      }
+      .logo-link img { height: 40px; width: auto; }
+      .logo-link span { font-size: 22px; font-weight: 600; }
+      .theme-btn {
+        width: 40px; height: 40px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        border-radius: 10px;
+        cursor: pointer;
+        color: var(--text);
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .theme-btn:hover { background: var(--bg-hover); }
+
+      /* Meta card */
+      #meta-header { width: 100%; margin-bottom: 24px; }
+      .meta-card {
+        display: flex;
+        gap: 20px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      .meta-poster {
+        width: 120px;
+        height: auto;
+        border-radius: 8px;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+      .meta-info { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+      .meta-title { font-size: 24px; font-weight: 700; line-height: 1.2; }
+      .meta-rating {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 14px; color: var(--text-muted);
+      }
+      .meta-rating svg { color: #f5a623; }
+      .meta-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+      .loading-text { color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px; }
+
+      /* Episode selector */
+      #episode-selector {
+        width: 100%;
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 24px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+      }
+      #episode-selector .row {
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;
+      }
+      #episode-selector label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+      .select {
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        outline: none;
+      }
+      .select:focus { border-color: var(--primary); }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, opacity 0.15s;
+        background: var(--primary);
+        color: #fff;
+      }
+      .btn:hover { background: var(--primary-hover); }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-secondary {
+        background: var(--bg-hover);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+      .btn-secondary:hover { background: var(--border); }
+
+      /* Magnets list */
+      #magnets-container { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+      .magnets-heading { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+      .magnet-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .magnet-card:hover { border-color: var(--primary); background: var(--bg-hover); }
+      .magnet-top {
+        display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+      }
+      .magnet-title-block { flex: 1; min-width: 0; }
+      .magnet-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .magnet-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .magnet-seeders {
+        font-size: 12px; color: var(--text-muted);
+        display: flex; align-items: center; gap: 4px;
+        flex-shrink: 0;
+      }
+      .magnet-seeders svg { color: var(--success); }
+      .play-btn { width: 100%; }
+
+      /* Audio codec badge */
+      .audio-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 6px;
+        flex-shrink: 0;
+      }
+      .audio-badge.bad {
+        background: rgba(255, 71, 87, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(255, 71, 87, 0.3);
+      }
+      .audio-badge.good {
+        background: rgba(46, 213, 115, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(46, 213, 115, 0.3);
+      }
+      .magnet-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+      .magnet-warning {
+        font-size: 12px;
+        color: var(--danger);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 2px;
+      }
+
+      /* Filter toggle */
+      .filter-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .filter-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text-muted);
+        user-select: none;
+      }
+      .filter-toggle input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+      .filter-toggle:hover { color: var(--text); }
+
+      /* Player */
+      #player-wrapper {
+        width: 100%;
+        margin-top: 32px;
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .player-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .player-header h2 { font-size: 18px; font-weight: 600; }
+      .player-actions { display: flex; gap: 8px; }
+      .player-frame-container {
+        width: 100%;
+        position: relative;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: #000;
+        aspect-ratio: 16 / 9;
+      }
+      #player-frame { width: 100%; height: 100%; border: none; display: block; }
+      .player-fullscreen-btn {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s;
+        z-index: 2;
+      }
+      .player-fullscreen-btn:hover { background: rgba(0,0,0,0.85); }
+
+      /* Loader */
+      .loader {
+        display: inline-block;
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Error */
+      .error-text { color: var(--danger); font-size: 14px; text-align: center; padding: 20px; }
+
+      @media (max-width: 600px) {
+        .meta-card { flex-direction: column; align-items: center; text-align: center; }
+        .meta-poster { width: 100px; }
+      }
+    </style>
+    <script>
+      if (localStorage.getItem("theme") === "light") {
+        document.documentElement.classList.add("light");
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <div class="header-bar">
+        <a href="/" class="logo-link">
+          <img src="assets/bitplay_logo.png" alt="logo" />
+          <span>bitplay</span>
+        </a>
+        <button class="theme-btn" id="toggle_theme" type="button">🌙</button>
+      </div>
+
+      <div id="meta-header">
+        <div class="loading-text">Loading metadata...</div>
+      </div>
+
+      <div id="episode-selector">
+        <div class="row">
+          <label>Season</label>
+          <select id="season-select" class="select"></select>
+          <label>Episode</label>
+          <select id="episode-select" class="select"></select>
+          <button id="load-episode-btn" class="btn">Load Magnets</button>
+        </div>
+      </div>
+
+      <div id="filter-bar" class="filter-bar" style="display:none;">
+        <span class="magnets-heading" id="magnets-count"></span>
+        <label class="filter-toggle">
+          <input type="checkbox" id="hide-incompatible" checked />
+          Hide no-sound magnets (DDP5.1, EAC3, AC3, DTS, TrueHD)
+        </label>
+      </div>
+
+      <div id="magnets-container">
+        <div class="loading-text">Fetching magnets...</div>
+      </div>
+
+      <div id="player-wrapper">
+        <div class="player-header">
+          <h2>Now Playing</h2>
+          <div class="player-actions">
+            <button id="back-to-torrents" class="btn btn-secondary">← Back to Torrents</button>
+            <button id="close-player" class="btn btn-secondary">Close</button>
+          </div>
+        </div>
+        <div class="player-frame-container">
+          <iframe id="player-frame" src="" allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
+          <button class="player-fullscreen-btn" id="fullscreen-btn" type="button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            Fullscreen
+          </button>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        var toggleBtn = document.getElementById("toggle_theme");
+        toggleBtn.addEventListener("click", function () {
+          var html = document.documentElement;
+          html.classList.toggle("light");
+          var isLight = html.classList.contains("light");
+          toggleBtn.textContent = isLight ? "🌙" : "☀️";
+          localStorage.setItem("theme", isLight ? "light" : "dark");
+        });
+        if (document.documentElement.classList.contains("light")) {
+          toggleBtn.textContent = "🌙";
+        } else {
+          toggleBtn.textContent = "☀️";
+        }
+
+        var path = window.location.pathname;
+        var contentType = "movie";
+        var imdbID = "";
+        var urlSeason = null;
+        var urlEpisode = null;
+
+        if (path.indexOf("/movie/") === 0) {
+          contentType = "movie";
+          imdbID = path.replace("/movie/", "").replace(/\/$/, "");
+        } else if (path.indexOf("/series/") === 0) {
+          contentType = "series";
+          imdbID = path.replace("/series/", "").replace(/\/$/, "");
+        } else if (path.indexOf("/tv/") === 0) {
+          contentType = "series";
+          var parts = path.replace("/tv/", "").replace(/\/$/, "").split("/");
+          imdbID = parts[0] || "";
+          if (parts[1]) urlSeason = parseInt(parts[1], 10);
+          if (parts[2]) urlEpisode = parseInt(parts[2], 10);
+        }
+
+        if (!imdbID) {
+          document.getElementById("meta-header").innerHTML = '<div class="error-text">Invalid URL. Use /movie/tt1234567 or /tv/tt1234567/1/1</div>';
+          return;
+        }
+
+        var meta = null;
+        var currentSeason = urlSeason || 1;
+        var currentEpisode = urlEpisode || 1;
+
+        function fetchMeta() {
+          return fetch("/api/v1/meta?type=" + contentType + "&imdb=" + imdbID)
+            .then(function (res) { return res.ok ? res.json() : Promise.reject(new Error("Failed to fetch metadata")); })
+            .then(function (data) {
+              meta = data.meta || data;
+              renderMeta();
+              if (contentType === "series") renderEpisodeSelector();
+            })
+            .catch(function (e) {
+              document.getElementById("meta-header").innerHTML = '<div class="error-text">Failed to load metadata: ' + e.message + "</div>";
+            });
+        }
+
+        function escapeHtml(s) {
+          var d = document.createElement("div");
+          d.textContent = s || "";
+          return d.innerHTML;
+        }
+
+        function renderMeta() {
+          var header = document.getElementById("meta-header");
+          var name = escapeHtml(meta.name || meta.title || imdbID);
+          var poster = meta.poster || "";
+          var description = escapeHtml(meta.description || "");
+          var rating = meta.imdbRating || "";
+
+          var html = '<div class="meta-card">';
+          if (poster) html += '<img class="meta-poster" src="' + poster + '" alt="' + name + '" />';
+          html += '<div class="meta-info">';
+          html += '<div class="meta-title">' + name + "</div>";
+          if (rating) html += '<div class="meta-rating"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> ' + escapeHtml(rating) + "/10</div>";
+          if (description) html += '<div class="meta-desc">' + description + "</div>";
+          html += "</div></div>";
+          header.innerHTML = html;
+          document.title = name + " - BitPlay";
+        }
+
+        function renderEpisodeSelector() {
+          var selector = document.getElementById("episode-selector");
+          var seasonSelect = document.getElementById("season-select");
+          var episodeSelect = document.getElementById("episode-select");
+          selector.style.display = "flex";
+
+          var videos = meta.videos || [];
+          var seasons = [];
+          videos.forEach(function (v) { if (seasons.indexOf(v.season) === -1) seasons.push(v.season); });
+          seasons.sort(function (a, b) { return a - b; });
+
+          seasonSelect.innerHTML = "";
+          seasons.forEach(function (s) {
+            var opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s === 0 ? "Special" : "Season " + s;
+            seasonSelect.appendChild(opt);
+          });
+
+          function updateEpisodes() {
+            var season = parseInt(seasonSelect.value, 10);
+            currentSeason = season;
+            var eps = videos.filter(function (v) { return v.season === season; }).sort(function (a, b) { return a.episode - b.episode; });
+            episodeSelect.innerHTML = "";
+            eps.forEach(function (e) {
+              var opt = document.createElement("option");
+              opt.value = e.episode;
+              opt.textContent = "Ep " + e.episode + (e.name ? " - " + e.name : "");
+              episodeSelect.appendChild(opt);
+            });
+            // Pre-select episode from URL if valid
+            if (urlEpisode && eps.some(function (e) { return e.episode === urlEpisode; })) {
+              episodeSelect.value = String(urlEpisode);
+              currentEpisode = urlEpisode;
+              urlEpisode = null;
+            } else {
+              currentEpisode = eps.length ? eps[0].episode : 1;
+            }
+          }
+
+          // Pre-select season from URL
+          if (urlSeason && seasons.some(function (s) { return s === urlSeason; })) {
+            seasonSelect.value = String(urlSeason);
+          }
+
+          seasonSelect.addEventListener("change", updateEpisodes);
+          episodeSelect.addEventListener("change", function () { currentEpisode = parseInt(episodeSelect.value, 10); });
+          updateEpisodes();
+
+          document.getElementById("load-episode-btn").addEventListener("click", function () {
+            currentSeason = parseInt(seasonSelect.value, 10);
+            currentEpisode = parseInt(episodeSelect.value, 10);
+            fetchMagnets();
+          });
+        }
+
+        function fetchMagnets() {
+          var container = document.getElementById("magnets-container");
+          container.innerHTML = '<div class="loading-text">Fetching magnets...</div>';
+
+          var url = "/api/v1/magnets?type=" + contentType + "&imdb=" + imdbID;
+          if (contentType === "series") url += "&season=" + currentSeason + "&episode=" + currentEpisode;
+
+          fetch(url)
+            .then(function (res) {
+              return res.ok ? res.json() : res.json().then(function (e) { throw new Error(e.error || "Failed to fetch magnets"); });
+            })
+            .then(function (data) { renderMagnets(data.magnets || []); })
+            .catch(function (e) {
+              container.innerHTML = '<div class="error-text">Error: ' + escapeHtml(e.message) + "</div>";
+            });
+        }
+
+        function renderMagnets(magnets) {
+          var container = document.getElementById("magnets-container");
+          var filterBar = document.getElementById("filter-bar");
+          var countEl = document.getElementById("magnets-count");
+          container.innerHTML = "";
+
+          if (!magnets.length) {
+            filterBar.style.display = "none";
+            container.innerHTML = '<div class="loading-text">No magnets found. Try a different episode or quality.</div>';
+            return;
+          }
+
+          // Detect audio codecs from title
+          var badCodecs = [
+            { re: /DDP\s*5\.1|DDPA|DDP\b|E-?AC-?3|EC3/i, label: "DDP5.1" },
+            { re: /\bAC-?3\b|Dolby\s*Digital/i, label: "AC3" },
+            { re: /\bDTS\b|DTS-?HD/i, label: "DTS" },
+            { re: /TrueHD|True\s*HD/i, label: "TrueHD" },
+            { re: /Atmos/i, label: "Atmos" },
+          ];
+          var goodCodecs = [ { re: /\bAAC\b/i, label: "AAC" }, { re: /\bOpus\b/i, label: "Opus" } ];
+
+          function detectAudio(title) {
+            var bad = [];
+            var good = [];
+            badCodecs.forEach(function (c) { if (c.re.test(title)) bad.push(c.label); });
+            goodCodecs.forEach(function (c) { if (c.re.test(title)) good.push(c.label); });
+            return { bad: bad, good: good, compatible: bad.length === 0 };
+          }
+
+          var allMagnets = magnets.map(function (m) {
+            var info = detectAudio(m.title || "");
+            m._audioBad = info.bad;
+            m._audioGood = info.good;
+            m._compatible = info.compatible;
+            return m;
+          });
+
+          var hideIncompatible = document.getElementById("hide-incompatible").checked;
+          var visible = hideIncompatible ? allMagnets.filter(function (m) { return m._compatible; }) : allMagnets;
+
+          countEl.textContent = "Available Magnets (" + visible.length + " of " + allMagnets.length + ")";
+          filterBar.style.display = "flex";
+
+          if (!visible.length) {
+            container.innerHTML = '<div class="loading-text">All magnets have incompatible audio codecs. Uncheck "Hide no-sound magnets" to see them.</div>';
+            return;
+          }
+
+          visible.forEach(function (m) {
+            var titleLines = (m.title || "").split("\n");
+            var title = escapeHtml(titleLines[0] || "Unknown");
+            var subtitle = escapeHtml(titleLines[1] || "");
+
+            var card = document.createElement("div");
+            card.className = "magnet-card";
+
+            var top = document.createElement("div");
+            top.className = "magnet-top";
+            top.innerHTML =
+              '<div class="magnet-title-block">' +
+                '<div class="magnet-title">' + title + "</div>" +
+                (subtitle ? '<div class="magnet-subtitle">' + subtitle + "</div>" : "") +
+              "</div>" +
+              (m.seeders ? '<div class="magnet-seeders"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"/><path d="M5 12l7-7 7 7"/></svg>' + m.seeders + " seeders</div>" : "");
+            card.appendChild(top);
+
+            // Audio codec badges
+            if (m._audioBad.length || m._audioGood.length) {
+              var badges = document.createElement("div");
+              badges.className = "magnet-badges";
+              m._audioBad.forEach(function (label) {
+                badges.innerHTML += '<span class="audio-badge bad" title="Browser cannot decode this audio codec - no sound">&#128266; ' + label + " (no sound)</span>";
+              });
+              m._audioGood.forEach(function (label) {
+                badges.innerHTML += '<span class="audio-badge good" title="Compatible audio codec">&#128266; ' + label + "</span>";
+              });
+              card.appendChild(badges);
+            }
+
+            if (!m._compatible) {
+              var warn = document.createElement("div");
+              warn.className = "magnet-warning";
+              warn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> No sound in browser - ' + m._audioBad.join(", ");
+              card.appendChild(warn);
+            }
+
+            var btn = document.createElement("button");
+            btn.className = "btn play-btn";
+            btn.textContent = "Play";
+            btn.addEventListener("click", function () { playMagnet(m.magnet, btn); });
+            card.appendChild(btn);
+
+            container.appendChild(card);
+          });
+        }
+
+        function playMagnet(magnet, btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="loader"></span> Loading...';
+
+          fetch("/process?magnet=" + encodeURIComponent(magnet) + "&format=json")
+            .then(function (res) {
+              return res.ok ? res.json() : res.json().then(function (e) { throw new Error(e.error || "Failed to process magnet"); });
+            })
+            .then(function (data) {
+              var playerUrl = data.playerUrl || data.proxiedUrl;
+              if (!playerUrl) throw new Error("No player URL returned");
+              var wrapper = document.getElementById("player-wrapper");
+              var frame = document.getElementById("player-frame");
+              frame.src = playerUrl;
+              wrapper.style.display = "flex";
+              document.getElementById("magnets-container").style.display = "none";
+              document.getElementById("episode-selector").style.display = "none";
+              document.getElementById("meta-header").style.display = "none";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            })
+            .catch(function (e) { alert("Error: " + e.message); })
+            .finally(function () {
+              btn.disabled = false;
+              btn.textContent = "Play";
+            });
+        }
+
+        function showTorrents() {
+          var wrapper = document.getElementById("player-wrapper");
+          document.getElementById("player-frame").src = "";
+          wrapper.style.display = "none";
+          document.getElementById("magnets-container").style.display = "flex";
+          if (contentType === "series") document.getElementById("episode-selector").style.display = "flex";
+          document.getElementById("meta-header").style.display = "block";
+          document.getElementById("back-to-torrents").blur();
+        }
+
+        document.getElementById("close-player").addEventListener("click", showTorrents);
+        document.getElementById("back-to-torrents").addEventListener("click", showTorrents);
+
+        document.getElementById("fullscreen-btn").addEventListener("click", function () {
+          var container = document.querySelector(".player-frame-container");
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else if (container.requestFullscreen) {
+            container.requestFullscreen();
+          }
+        });
+
+        document.getElementById("hide-incompatible").addEventListener("change", function () {
+          if (lastMagnets) renderMagnets(lastMagnets);
+        });
+
+        var lastMagnets = null;
+        var _origFetchMagnets = fetchMagnets;
+        fetchMagnets = function () {
+          var container = document.getElementById("magnets-container");
+          container.innerHTML = '<div class="loading-text">Fetching magnets...</div>';
+
+          var url = "/api/v1/magnets?type=" + contentType + "&imdb=" + imdbID;
+          if (contentType === "series") url += "&season=" + currentSeason + "&episode=" + currentEpisode;
+
+          fetch(url)
+            .then(function (res) {
+              return res.ok ? res.json() : res.json().then(function (e) { throw new Error(e.error || "Failed to fetch magnets"); });
+            })
+            .then(function (data) {
+              lastMagnets = data.magnets || [];
+              renderMagnets(lastMagnets);
+            })
+            .catch(function (e) {
+              container.innerHTML = '<div class="error-text">Error: ' + escapeHtml(e.message) + "</div>";
+            });
+        };
+
+        fetchMeta().then(function () { fetchMagnets(); });
+      })();
+    </script>
+  </body>
+</html>
